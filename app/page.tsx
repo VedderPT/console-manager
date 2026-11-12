@@ -1,25 +1,29 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase, type ColorStock, type Model } from '@/lib/supabase';
+import { supabase, type ColorStock, type Model, type Version } from '@/lib/supabase';
 import { useSession } from '@/lib/useSession';
 import Login from './Login';
+import ModelImage from './ModelImage';
 
 export default function Home() {
   const { session, loading } = useSession();
   const [models, setModels] = useState<Model[]>([]);
   const [stock, setStock] = useState<ColorStock[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
   const [filter, setFilter] = useState<'todos' | 'linux' | 'android' | 'sem'>('todos');
   const [q, setQ] = useState('');
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const [m, s] = await Promise.all([
-      supabase.from('models').select('id,brand,name,system,active').order('system').order('name'),
+    const [m, s, v] = await Promise.all([
+      supabase.from('models').select('id,brand,name,system,active,image_path').order('system').order('name'),
       supabase.from('model_stock').select('*'),
+      supabase.from('model_versions').select('*'),
     ]);
-    if (m.error || s.error) { setError((m.error || s.error)!.message); return; }
-    setModels(m.data as Model[]); setStock(s.data as ColorStock[]);
+    const err = m.error || s.error || v.error;
+    if (err) { setError(err.message); return; }
+    setModels(m.data as Model[]); setStock(s.data as ColorStock[]); setVersions(v.data as Version[]);
   }, []);
   useEffect(() => { if (session) load(); }, [session, load]);
 
@@ -28,6 +32,11 @@ export default function Home() {
     stock.forEach(r => t.set(r.model_id, (t.get(r.model_id) ?? 0) + Number(r.available)));
     return t;
   }, [stock]);
+  const prices = useMemo(() => {
+    const p = new Map<string, number>();
+    versions.forEach(v => p.set(v.model_id, Math.min(p.get(v.model_id) ?? Infinity, Number(v.price))));
+    return p;
+  }, [versions]);
 
   if (loading) return <p className="mt-16 text-center text-slate-400">A carregar…</p>;
   if (!session) return <Login />;
@@ -36,32 +45,46 @@ export default function Home() {
     (filter === 'todos' || (filter === 'sem' ? (totals.get(m.id) ?? 0) === 0 : m.system === filter)) &&
     m.name.toLowerCase().includes(q.toLowerCase()));
   const totalUnits = [...totals.values()].reduce((a, b) => a + b, 0);
+  const withStock = models.filter(m => (totals.get(m.id) ?? 0) > 0).length;
 
   return (
     <>
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Stock <span className="text-slate-400 text-base">({totalUnits} consolas)</span></h1>
-        <span className="flex gap-2"><Link href="/importar/" className="btn-ghost">Importar</Link><button className="btn-ghost" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+      <header className="flex items-end justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-sky-400">Star Tech</p>
+          <h1 className="text-2xl font-bold">Stock</h1>
+        </div>
+        <button className="btn-ghost" onClick={() => supabase.auth.signOut()}>Sair</button>
       </header>
-      <input className="input mt-3" placeholder="Pesquisar modelo…" value={q} onChange={e => setQ(e.target.value)} />
-      <div className="mt-3 flex gap-2 overflow-x-auto">
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="card !p-3"><div className="text-2xl font-bold text-emerald-400">{totalUnits}</div><div className="text-xs text-slate-400">consolas</div></div>
+        <div className="card !p-3"><div className="text-2xl font-bold">{withStock}</div><div className="text-xs text-slate-400">modelos com stock</div></div>
+        <div className="card !p-3"><div className="text-2xl font-bold text-amber-300">{models.length - withStock}</div><div className="text-xs text-slate-400">esgotados</div></div>
+      </div>
+      <input className="input mt-4" placeholder="Pesquisar modelo…" value={q} onChange={e => setQ(e.target.value)} />
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
         {(['todos', 'linux', 'android', 'sem'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={filter === f ? 'btn' : 'btn-ghost'}>
+          <button key={f} onClick={() => setFilter(f)} className={`chip whitespace-nowrap ${filter === f ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>
             {f === 'sem' ? 'Sem stock' : f[0].toUpperCase() + f.slice(1)}
           </button>))}
       </div>
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-      <ul className="mt-4 space-y-2">
+      <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {shown.map(m => {
           const n = totals.get(m.id) ?? 0;
+          const p = prices.get(m.id);
           return (
             <li key={m.id}>
-              <Link href={`/modelo/?id=${m.id}`} className="card flex items-center justify-between">
-                <span>
-                  <span className="block font-medium">{m.name}</span>
-                  <span className="text-xs text-slate-400">{m.system === 'linux' ? 'Linux' : 'Android'}</span>
-                </span>
-                <span className={n > 0 ? 'text-lg font-semibold text-emerald-400' : 'text-sm text-slate-500'}>{n > 0 ? n : 'esgotado'}</span>
+              <Link href={`/modelo/?id=${m.id}`} className="card block overflow-hidden !p-0 transition active:scale-[.98]">
+                <div className="relative">
+                  <ModelImage path={m.image_path} name={m.name} system={m.system} className="aspect-[4/3]" />
+                  <span className={`chip absolute right-2 top-2 ${n > 0 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800/90 text-slate-400'}`}>{n > 0 ? `${n} em stock` : 'esgotado'}</span>
+                </div>
+                <div className="p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">{m.brand} · {m.system === 'linux' ? 'Linux' : 'Android'}</p>
+                  <p className="font-semibold leading-tight">{m.name.replace(new RegExp(`^${m.brand}\\s+`, 'i'), '')}</p>
+                  {p !== undefined && p !== Infinity && <p className="mt-1 text-sm text-sky-300">desde {p} €</p>}
+                </div>
               </Link>
             </li>);
         })}
