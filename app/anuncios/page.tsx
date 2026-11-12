@@ -30,6 +30,9 @@ export default function Anuncios() {
   const [open, setOpen] = useState<string | null>(null);
   const [link, setLink] = useState('');
   const [msg, setMsg] = useState('');
+  const [wa, setWa] = useState(false);
+  const [waOut, setWaOut] = useState('');
+  const [waBusy, setWaBusy] = useState(false);
 
   const load = useCallback(async () => {
     const [m, v, s, o, l, u] = await Promise.all([
@@ -59,6 +62,15 @@ export default function Anuncios() {
     setMsg(error ? error.message : 'Marcado como ocultado.'); await load();
   }
 
+  async function syncWa(dry: boolean) {
+    setWaBusy(true); setWaOut('A sincronizar…');
+    const { data, error } = await supabase.functions.invoke('catalog-sync', { body: { dry } });
+    setWaBusy(false);
+    if (error) { let d = error.message; try { d = JSON.stringify(await (error as any).context.json()); } catch {} setWaOut('Erro: ' + d); return; }
+    const sk = (data?.skipped ?? []) as string[];
+    setWaOut(`${dry ? 'Teste: ' : ''}${data?.items ?? 0} modelos ${dry ? 'prontos a enviar' : 'enviados ao catálogo'}.${sk.length ? ' Sem foto (não enviados): ' + sk.join(', ') : ''}${data?.meta?.error ? ' Meta: ' + JSON.stringify(data.meta.error) : ''}`);
+  }
+
   if (loading) return <p className="mt-16 text-center text-slate-400">A carregar…</p>;
   if (!session) return <Login />;
 
@@ -75,8 +87,20 @@ export default function Anuncios() {
     <>
       <header><p className="text-xs uppercase tracking-widest text-sky-400">Star Tech</p><h1 className="text-2xl font-bold">Anúncios</h1></header>
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-        {PLATFORMS.map(([p, l]) => <button key={p} onClick={() => { setPlatform(p); setOpen(null); setMsg(''); }} className={`chip whitespace-nowrap ${platform === p ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>{l}</button>)}
+        {PLATFORMS.map(([p, l]) => <button key={p} onClick={() => { setPlatform(p); setWa(false); setOpen(null); setMsg(''); }} className={`chip whitespace-nowrap ${!wa && platform === p ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>{l}</button>)}
+        <button onClick={() => setWa(true)} className={`chip whitespace-nowrap ${wa ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>WhatsApp</button>
       </div>
+      {wa && (
+        <section className="card mt-4 space-y-3">
+          <h2 className="font-semibold">Catálogo WhatsApp (automático)</h2>
+          <p className="text-sm text-slate-400">Envia um artigo por modelo (título, preço «desde», foto, descrição). Com stock fica visível; sem stock fica oculto. As quantidades nunca são enviadas.</p>
+          <div className="flex gap-2">
+            <button className="btn-ghost" disabled={waBusy} onClick={() => syncWa(true)}>Testar (sem enviar)</button>
+            <button className="btn" disabled={waBusy} onClick={() => syncWa(false)}>Sincronizar agora</button>
+          </div>
+          {waOut && <p className="text-sm text-amber-300 break-words">{waOut}</p>}
+        </section>)}
+      {!wa && <>
       <p className="mt-2 text-xs text-slate-500">
         {platform === 'vinted' ? 'Um anúncio por consola.' : platform === 'marketplace' ? 'Texto igual ao do OLX, um anúncio por modelo.' : 'Um anúncio por modelo.'} A publicação é manual: copias o texto, publicas na plataforma e voltas aqui para registar.
       </p>
@@ -160,6 +184,7 @@ export default function Anuncios() {
       </ul>
       {((platform !== 'vinted' && activeModels.length === 0) || (platform === 'vinted' && units.length === 0)) && (
         <p className="mt-6 text-center text-slate-400">Sem consolas em stock. Importa ou adiciona stock para ver anúncios.</p>)}
+      </>}
     </>
   );
 }
