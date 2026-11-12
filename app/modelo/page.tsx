@@ -25,6 +25,7 @@ function ModelDetail() {
   const [extra, setExtra] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const multiVersion = info?.system === 'android' && versions.length > 1;
 
@@ -36,6 +37,7 @@ function ModelDetail() {
       supabase.from('model_versions').select('*').eq('model_id', id).order('sort'),
       supabase.from('units').select('id,color_id,version_id').eq('model_id', id).eq('status', 'available'),
     ]);
+    setLoadError(m.error?.message ?? '');
     if (m.data) { setInfo(m.data as Info); setGamesUrl(m.data.games_url ?? ''); setExtra(m.data.games_extra?.toString() ?? ''); }
     setColors((c.data ?? []) as Color[]); setVersions((v.data ?? []) as Version[]); setUnits((u.data ?? []) as Unit[]);
     setVersion(prev => prev || v.data?.[0]?.id || '');
@@ -84,6 +86,7 @@ function ModelDetail() {
 
   if (loading) return <p className="mt-16 text-center text-slate-400">A carregar…</p>;
   if (!session) return <p className="mt-16 text-center"><Link href="/" className="underline">Iniciar sessão</Link></p>;
+  if (loadError && !info) return <p className="mt-16 text-center text-red-400">Erro ao carregar o modelo: {loadError}</p>;
   if (!id || !info) return <p>A carregar modelo…</p>;
   const total = units.length;
 
