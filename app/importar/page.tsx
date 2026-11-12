@@ -1,4 +1,5 @@
 'use client';
+import { syncCatalog } from '@/lib/sync';
 import Link from 'next/link';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -56,6 +57,7 @@ export default function Importar() {
     if (error) { setMsg(error.message); setBusy(false); return; }
     await supabase.from('stock_movements').insert(data!.map(u => ({ unit_id: u.id, model_id: u.model_id, kind: 'in', note: 'importação' })));
     setMsg(`${data!.length} consolas adicionadas ao stock.`); setRows([]); setText(''); setBusy(false);
+    syncCatalog().then(r => setMsg(m => `${m} ${r}`));
   }
 
   if (loading) return <p className="mt-16 text-center text-slate-400">A carregar…</p>;

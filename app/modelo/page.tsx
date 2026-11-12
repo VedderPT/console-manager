@@ -1,4 +1,5 @@
 'use client';
+import { syncCatalog } from '@/lib/sync';
 import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -51,12 +52,14 @@ function ModelDetail() {
     if (error) setMsg(error.message);
     else await supabase.from('stock_movements').insert({ unit_id: data.id, model_id: id, kind: 'in' });
     await load(); setBusy(false);
+    syncCatalog().then(setMsg);
   }
   async function sell(colorId: string, vid?: string) {
     setBusy(true); setMsg('');
     const { error } = await supabase.rpc('sell_unit', { p_color: colorId, p_channel: channel || null, p_version: vid ?? null });
     setMsg(error ? error.message : 'Venda registada.');
     await load(); setBusy(false);
+    if (!error) syncCatalog().then(r => setMsg(`Venda registada. ${r}`));
   }
   async function upload(file: File) {
     setBusy(true); setMsg('');

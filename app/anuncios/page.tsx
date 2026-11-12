@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, imageUrl, type ColorStock, type Version } from '@/lib/supabase';
 import { useSession } from '@/lib/useSession';
-import { minPrice, textFor, title, vintedText, type TModel, type TOption, type TVersion } from '@/lib/templates';
+import { minPrice, olxText, textFor, wallapopText, title, vintedText, type TModel, type TOption, type TVersion } from '@/lib/templates';
 import Login from '../Login';
 import ModelImage from '../ModelImage';
 
@@ -27,6 +27,7 @@ export default function Anuncios() {
   const [options, setOptions] = useState<TOption[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [units, setUnits] = useState<UnitRow[]>([]);
+  const [variant, setVariant] = useState<'auto' | 'detalhado' | 'simples'>('auto');
   const [open, setOpen] = useState<string | null>(null);
   const [link, setLink] = useState('');
   const [msg, setMsg] = useState('');
@@ -126,7 +127,7 @@ export default function Anuncios() {
         {platform !== 'vinted' && activeModels.map(m => {
           const l = listingFor(m.id);
           const vs = versOf(m.id), cols = colorsInStock(m.id);
-          const text = textFor(platform, m, vs, cols, options);
+          const text = variant === 'detalhado' ? olxText(m, vs, cols, options) : variant === 'simples' ? wallapopText(m, vs, cols) : textFor(platform, m, vs, cols, options);
           const price = minPrice(vs);
           return (
             <li key={m.id} className="card !p-0 overflow-hidden">
@@ -139,6 +140,10 @@ export default function Anuncios() {
               {open === m.id && (
                 <div className="border-t border-slate-800 p-3 space-y-3">
                   <div className="text-sm text-slate-300">Título: <b>{title(platform, m)}</b>{price ? <> · Preço no anúncio: <b>{price} €</b></> : null}</div>
+                  <div className="flex gap-2">
+                    {([['auto', platform === 'wallapop' ? 'Simples (Wallapop)' : 'Detalhado (OLX/Marketplace)'], ['detalhado', 'Detalhado'], ['simples', 'Simples']] as const).map(([v, l]) => (
+                      <button key={v} onClick={() => setVariant(v)} className={`chip ${variant === v ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>{l}</button>))}
+                  </div>
                   <pre className="whitespace-pre-wrap rounded-xl bg-slate-950 p-3 text-sm text-slate-200">{text}</pre>
                   <div className="flex flex-wrap gap-2">
                     <CopyBtn text={title(platform, m)} label="Copiar título" />

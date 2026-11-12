@@ -5,6 +5,7 @@ import { supabase, type ColorStock, type Model, type Version } from '@/lib/supab
 import { useSession } from '@/lib/useSession';
 import Login from './Login';
 import ModelImage from './ModelImage';
+import { colorHex, isTransparent } from '@/lib/colors';
 
 export default function Home() {
   const { session, loading } = useSession();
@@ -31,6 +32,12 @@ export default function Home() {
     const t = new Map<string, number>();
     stock.forEach(r => t.set(r.model_id, (t.get(r.model_id) ?? 0) + Number(r.available)));
     return t;
+  }, [stock]);
+  const dots = useMemo(() => {
+    const d = new Map<string, ColorStock[]>();
+    stock.forEach(r => d.set(r.model_id, [...(d.get(r.model_id) ?? []), r]));
+    d.forEach(a => a.sort((x, y) => Number(y.available > 0) - Number(x.available > 0) || x.color.localeCompare(y.color)));
+    return d;
   }, [stock]);
   const prices = useMemo(() => {
     const p = new Map<string, number>();
@@ -83,6 +90,15 @@ export default function Home() {
                 <div className="p-3">
                   <p className="text-[11px] uppercase tracking-wide text-slate-400">{m.brand} · {m.system === 'linux' ? 'Linux' : 'Android'}</p>
                   <p className="font-semibold leading-tight">{m.name.replace(new RegExp(`^${m.brand}\\s+`, 'i'), '')}</p>
+                  {(dots.get(m.id)?.length ?? 0) > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {dots.get(m.id)!.map(c => (
+                        <span key={c.color_id} title={`${c.color}: ${c.available}`}
+                          className={`relative inline-block h-4 w-4 rounded-full ring-1 ring-slate-500 ${Number(c.available) > 0 ? '' : 'opacity-25'}`}
+                          style={{ background: isTransparent(c.color) ? `linear-gradient(135deg, ${colorHex(c.color)} 55%, rgba(255,255,255,.35) 55%)` : colorHex(c.color) }}>
+                          {Number(c.available) > 1 && <span className="absolute -right-1.5 -top-1.5 rounded-full bg-sky-500 px-1 text-[9px] font-bold leading-3 text-slate-950">{c.available}</span>}
+                        </span>))}
+                    </div>)}
                   {p !== undefined && p !== Infinity && <p className="mt-1 text-sm text-sky-300">desde {p} €</p>}
                 </div>
               </Link>
