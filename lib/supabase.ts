@@ -23,3 +23,13 @@ export async function shrinkImage(file: File, max = 900): Promise<Blob> {
   c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
   return new Promise((res, rej) => c.toBlob(b => (b ? res(b) : rej(new Error('Falha ao processar imagem'))), 'image/jpeg', 0.85));
 }
+
+/** Galeria de fotos de um modelo (bucket model-images, pasta gallery/<id>/), por ordem de envio. */
+export async function listPhotos(modelId: string): Promise<{ path: string; url: string }[]> {
+  const dir = `gallery/${modelId}`;
+  const { data } = await supabase.storage.from('model-images').list(dir, { limit: 100, sortBy: { column: 'name', order: 'asc' } });
+  return (data ?? []).filter(f => f.name && !f.name.startsWith('.')).map(f => {
+    const path = `${dir}/${f.name}`;
+    return { path, url: supabase.storage.from('model-images').getPublicUrl(path).data.publicUrl };
+  });
+}

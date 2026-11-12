@@ -6,6 +6,7 @@ import { useSession } from '@/lib/useSession';
 import { minPrice, olxText, textFor, wallapopText, title, vintedText, type TModel, type TOption, type TVersion } from '@/lib/templates';
 import Login from '../Login';
 import ModelImage from '../ModelImage';
+import { PhotoPicker } from '../Gallery';
 
 type Platform = 'wallapop' | 'olx' | 'marketplace' | 'vinted';
 type ModelRow = TModel & { image_path: string | null; active: boolean };
@@ -148,8 +149,8 @@ export default function Anuncios() {
                   <div className="flex flex-wrap gap-2">
                     <CopyBtn text={title(platform, m)} label="Copiar título" />
                     <CopyBtn text={text} label="Copiar texto" />
-                    {imageUrl(m.image_path) && <a className="btn-ghost" href={imageUrl(m.image_path)!} target="_blank" rel="noreferrer">Ver foto</a>}
                   </div>
+                  <PhotoPicker modelId={m.id} />
                   {l ? (
                     <div className="flex items-center justify-between text-sm"><Link2 url={l.external_url} /><button className="btn-ghost" onClick={() => hide(l.id)}>Marcar como ocultado</button></div>
                   ) : (
@@ -180,6 +181,7 @@ export default function Anuncios() {
                   <div className="text-sm text-slate-300">Título: <b>{m.name} {color}</b>{price ? <> · Preço: <b>{price} €</b></> : null}</div>
                   <pre className="whitespace-pre-wrap rounded-xl bg-slate-950 p-3 text-sm text-slate-200">{text}</pre>
                   <div className="flex flex-wrap gap-2"><CopyBtn text={`${m.name} ${color}`} label="Copiar título" /><CopyBtn text={text} label="Copiar texto" /></div>
+                  <PhotoPicker modelId={m.id} />
                   {l ? <div className="flex items-center justify-between text-sm"><Link2 url={l.external_url} /><button className="btn-ghost" onClick={() => hide(l.id)}>Marcar como ocultado</button></div> : (
                     <div className="space-y-2"><input className="input" placeholder="Link do anúncio (opcional)" value={link} onChange={e => setLink(e.target.value)} />
                       <button className="btn w-full" onClick={() => publish({ unit_id: u.id })}>Já publiquei</button></div>)}

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { supabase, shrinkImage, type Version } from '@/lib/supabase';
 import { useSession } from '@/lib/useSession';
 import ModelImage from '../ModelImage';
+import { Gallery } from '../Gallery';
 
 type Color = { id: string; name: string; note: string | null };
 type Unit = { id: string; color_id: string; version_id: string | null };
@@ -142,6 +143,8 @@ function ModelDetail() {
             </div>
           </li>))}
       </ul>
+
+      <Gallery modelId={id} />
 
       <details className="card mt-4">
         <summary className="cursor-pointer font-medium">Dados para os anúncios</summary>
