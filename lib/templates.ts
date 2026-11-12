@@ -4,17 +4,25 @@
 export type TModel = {
   id: string; brand: string; name: string; system: 'linux' | 'android';
   shipping_text: string | null; bag_price: number | null; accessory: string | null;
-  os_frontend: string | null; specs: string | null; box_contents: string | null; games_extra: number | null;
+  os_frontend: string | null; specs: string | null; games_url: string | null; games_64: string | null; games_128: string | null; games_extra: number | null;
 };
 export type TVersion = { id: string; label: string; price: number; sort: number };
 export type TOption = { code: string; price: number; microsd: string | null; kind: string | null; games: string | null; max_games: string | null };
 
 const eur = (n: number) => `${String(n).replace('.', ',')}€`;
 
-/** Portes: Linux 5,50/10,90; modelos com portes "7,50" (ou Android) usam 7,50/14,50. */
-function shipping(m: TModel) {
-  const big = m.system === 'android' || (m.shipping_text ?? '').trim() === '7,50';
-  return big ? { reg: '7,50€', cob: '14,50€' } : { reg: '5,50€', cob: '10,90€' };
+/** Portes: até 500 g 5,50€ (à cobrança 10,90€); mais de 500 g 7,50€ (à cobrança 14,50€).
+ *  Android e modelos com "7,50" = mais de 500 g. Modelos com "5,50 | 7,50" mostram os dois escalões. */
+function shippingLine(m: TModel): string {
+  const t = (m.shipping_text ?? '').replace(/\s/g, '');
+  const big = m.system === 'android' || t === '7,50';
+  const both = !big && t.includes('|');
+  if (both) {
+    return 'Opções de envio: Entrega em mãos em Faro (Grátis), Correio Registado (+5,50€ até 500g / +7,50€ acima de 500g), ' +
+      'Envio à cobrança (+10,90€ até 500g / +14,50€ acima de 500g)';
+  }
+  const sh = big ? { reg: '7,50€', cob: '14,50€' } : { reg: '5,50€', cob: '10,90€' };
+  return `Opções de envio: Entrega em mãos em Faro (Grátis), Correio Registado (+${sh.reg}), Envio à cobrança (+${sh.cob})`;
 }
 const PAGAMENTO = 'Opções de pagamento: MBWay, Transferência, Entrega em mãos (Faro), Envio à cobrança';
 
@@ -28,21 +36,23 @@ export function title(platform: string, m: TModel): string {
 }
 
 export function olxText(m: TModel, versions: TVersion[], colors: string[], options: TOption[]): string {
-  const sh = shipping(m);
   const cores = colors.length ? colors.join(', ') : 'sob consulta';
   const L: string[] = [];
   if (m.system === 'linux') {
     L.push(`${m.name} | Oferta Bolsa Armazenamento`, '');
     if (m.os_frontend) L.push(`- Instalação ${m.os_frontend}`);
-    if (m.games_extra) L.push(`- Adicionamos até ${m.games_extra} jogos à escolha extra ao cartão sem custos.`);
+    if (m.games_64 || m.games_128) {
+      const g = [m.games_64 && `${m.games_64} jogos (64GB)`, m.games_128 && `${m.games_128} jogos (128GB)`].filter(Boolean).join(' / ');
+      L.push(`- Jogos incluídos: ${g}`);
+    }
     L.push('- Cartão original substituído por microSD conforme disponibilidade.', '');
     for (const v of versions) L.push(`Versão ${v.label}: ${eur(v.price)}`);
     L.push('', `Disponível em: ${cores}`);
     if (m.specs) L.push('', m.specs);
-    if (m.box_contents) L.push('', `Caixa inclui: ${m.box_contents}`);
+    if (m.games_url) L.push('', `Lista de jogos: ${m.games_url}`);
     if (m.accessory) L.push('', `Opcional: ${m.accessory}`);
     L.push('', PAGAMENTO,
-      `Opções de envio: Entrega em mãos em Faro (Grátis), Correio Registado (+${sh.reg}), Envio à cobrança (+${sh.cob})`);
+      shippingLine(m));
   } else {
     L.push(m.name, '', '- Todas as Consolas são novas, apenas abertas para controlo de qualidade, fotos, e configuração (se necessário)', '',
       `Cores disponíveis: ${cores}`, '', 'Opções:');
@@ -53,9 +63,10 @@ export function olxText(m: TModel, versions: TVersion[], colors: string[], optio
       L.push(`${o.code} - MicroSD ${o.microsd} · ${o.games}${o.max_games ? ` (escolha até ${o.max_games})` : ''}: +${eur(o.price)}`);
     }
     if (m.bag_price) L.push('', `Opcional: Bolsa de Armazenamento: +${eur(m.bag_price)}`);
+    if (m.games_url) L.push('', `Lista de jogos: ${m.games_url}`);
     if (m.specs) L.push('', m.specs);
     L.push('', 'Valores não são negociáveis, obrigado.', '', PAGAMENTO,
-      `Opções de envio: Entrega em mãos em Faro (Grátis), Correio Registado (+${sh.reg}), Envio à cobrança (+${sh.cob})`);
+      shippingLine(m));
   }
   return L.join('\n');
 }
@@ -71,6 +82,7 @@ export function wallapopText(m: TModel, versions: TVersion[], colors: string[]):
     : `- Inclui microSD com instalação${m.os_frontend ? ` ${m.os_frontend}` : ''}`);
   L.push('- Valores não são negociáveis', '', `Cores disponíveis: ${cores}`);
   if (m.bag_price) L.push(`Opcional: Bolsa Armazenamento: ${eur(m.bag_price)}`);
+  if (m.games_url) L.push(`Lista de jogos: ${m.games_url}`);
   return L.join('\n');
 }
 
@@ -78,7 +90,7 @@ export function vintedText(m: TModel, color: string, versionLabel: string | null
   const inclui = m.system === 'android' ? 'Consola' : `Consola com microSD${m.os_frontend ? ` e instalação ${m.os_frontend}` : ''}`;
   return ['Consola ' + m.brand, '', 'Consola apenas aberta para controle de qualidade e fotos', '',
     `Modelo: ${m.name}${versionLabel ? ` (${cleanLabel(versionLabel)})` : ''}`, `Cor: ${color}`, '',
-    `Inclui: ${m.box_contents ?? inclui}`, 'Valores não são negociáveis.'].join('\n');
+    `Inclui: ${inclui}`, 'Valores não são negociáveis.'].join('\n');
 }
 
 export function textFor(platform: string, m: TModel, versions: TVersion[], colors: string[], options: TOption[]): string {

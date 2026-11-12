@@ -37,7 +37,7 @@ export default function Anuncios() {
 
   const load = useCallback(async () => {
     const [m, v, s, o, l, u] = await Promise.all([
-      supabase.from('models').select('id,brand,name,system,shipping_text,bag_price,accessory,os_frontend,specs,box_contents,games_extra,image_path,active').order('name'),
+      supabase.from('models').select('id,brand,name,system,shipping_text,bag_price,accessory,os_frontend,specs,games_url,games_64,games_128,games_extra,image_path,active').order('name'),
       supabase.from('model_versions').select('*').order('sort'),
       supabase.from('model_stock').select('*'),
       supabase.from('android_options').select('*').order('sort'),

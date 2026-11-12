@@ -9,7 +9,7 @@ import ModelImage from '../ModelImage';
 
 type Color = { id: string; name: string; note: string | null };
 type Unit = { id: string; color_id: string; version_id: string | null };
-type Info = { name: string; brand: string; system: 'linux' | 'android'; image_path: string | null; box_contents: string | null; games_extra: number | null };
+type Info = { name: string; brand: string; system: 'linux' | 'android'; image_path: string | null; games_url: string | null; games_extra: number | null };
 const CHANNELS = [['olx', 'OLX'], ['wallapop', 'Wallapop'], ['vinted', 'Vinted'], ['marketplace', 'Marketplace'], ['whatsapp', 'WhatsApp']] as const;
 
 function ModelDetail() {
@@ -21,7 +21,7 @@ function ModelDetail() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [channel, setChannel] = useState('');
   const [version, setVersion] = useState('');
-  const [box, setBox] = useState('');
+  const [gamesUrl, setGamesUrl] = useState('');
   const [extra, setExtra] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,12 +31,12 @@ function ModelDetail() {
   const load = useCallback(async () => {
     if (!id) return;
     const [m, c, v, u] = await Promise.all([
-      supabase.from('models').select('name,brand,system,image_path,box_contents,games_extra').eq('id', id).single(),
+      supabase.from('models').select('name,brand,system,image_path,games_url,games_extra').eq('id', id).single(),
       supabase.from('colors').select('id,name,note').eq('model_id', id).order('name'),
       supabase.from('model_versions').select('*').eq('model_id', id).order('sort'),
       supabase.from('units').select('id,color_id,version_id').eq('model_id', id).eq('status', 'available'),
     ]);
-    if (m.data) { setInfo(m.data as Info); setBox(m.data.box_contents ?? ''); setExtra(m.data.games_extra?.toString() ?? ''); }
+    if (m.data) { setInfo(m.data as Info); setGamesUrl(m.data.games_url ?? ''); setExtra(m.data.games_extra?.toString() ?? ''); }
     setColors((c.data ?? []) as Color[]); setVersions((v.data ?? []) as Version[]); setUnits((u.data ?? []) as Unit[]);
     setVersion(prev => prev || v.data?.[0]?.id || '');
   }, [id]);
@@ -78,7 +78,7 @@ function ModelDetail() {
   }
   async function saveExtra() {
     setBusy(true);
-    const { error } = await supabase.from('models').update({ box_contents: box.trim() || null, games_extra: extra ? parseInt(extra) : null }).eq('id', id);
+    const { error } = await supabase.from('models').update({ games_url: gamesUrl.trim() || null }).eq('id', id);
     setMsg(error ? error.message : 'Dados do anúncio guardados.'); setBusy(false);
   }
 
@@ -143,12 +143,8 @@ function ModelDetail() {
       <details className="card mt-4">
         <summary className="cursor-pointer font-medium">Dados para os anúncios</summary>
         <div className="mt-3 space-y-2">
-          <label className="text-sm text-slate-400">Caixa inclui</label>
-          <input className="input" value={box} onChange={e => setBox(e.target.value)} placeholder="ex.: consola, cabo USB-C, manual" />
-          {info.system === 'linux' && (<>
-            <label className="text-sm text-slate-400">Jogos extra à escolha (número)</label>
-            <input className="input" inputMode="numeric" value={extra} onChange={e => setExtra(e.target.value.replace(/\D/g, ''))} />
-          </>)}
+          <label className="text-sm text-slate-400">Link da lista de jogos</label>
+          <input className="input" inputMode="url" value={gamesUrl} onChange={e => setGamesUrl(e.target.value)} placeholder="https://..." />
           <button className="btn" disabled={busy} onClick={saveExtra}>Guardar</button>
         </div>
       </details>
