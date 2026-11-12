@@ -191,6 +191,6 @@ insert into colors (model_id,name,note) select id,'Preto',null from models where
 insert into colors (model_id,name,note) select id,'Branco',null from models where name='Ayn Odin 3';
 insert into colors (model_id,name,note) select id,'Cinzento',null from models where name='Ayn Odin 3';
 insert into colors (model_id,name,note) select id,'Preto',null from models where name='Ayn Odin 3 Portal';
-insert into colors (model_id,name,note) select id,'Branco','A versão Base só existe em Preto (confirmado). Esta cor só nas versões Pro/Max.' from models where name='Ayn Odin 3 Portal';
-insert into colors (model_id,name,note) select id,'Cinzento','A versão Base só existe em Preto (confirmado). Esta cor só nas versões Pro/Max.' from models where name='Ayn Odin 3 Portal';
+insert into colors (model_id,name,note) select id,'Branco','A versão Base só existe em Preto (confirmado). Esta cor só nas versões Max.' from models where name='Ayn Odin 3 Portal';
+insert into colors (model_id,name,note) select id,'Cinzento','A versão Base só existe em Preto (confirmado). Esta cor só nas versões Max.' from models where name='Ayn Odin 3 Portal';
 commit;

@@ -17,7 +17,10 @@ for i, r in enumerate(wb['Preços'].iter_rows(min_row=2, values_only=True)):
     L.append(f"insert into model_versions (model_id,label,price,sort) select id,{q(r[1])},{r[2]},{i} from models where name={q(r[0])};")
 for r in wb['Stock'].iter_rows(min_row=2, values_only=True):
     if not r[0] or str(r[0]).startswith('EXEMPLO') or not r[2]: continue
-    L.append(f"insert into colors (model_id,name,note) select id,{q(r[2])},{q(r[5])} from models where name={q(r[0])};")
+    note = r[5]
+    if r[0] == 'Ayn Odin 3 Portal' and note:  # só existem Base e Max
+        note = note.replace('Pro/Max', 'Max')
+    L.append(f"insert into colors (model_id,name,note) select id,{q(r[2])},{q(note)} from models where name={q(r[0])};")
 L.append('commit;')
 open(out, 'w').write('\n'.join(L) + '\n')
 print(len(L), 'linhas')
