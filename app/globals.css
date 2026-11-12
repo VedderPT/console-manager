@@ -1,0 +1,6 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+body { @apply bg-slate-950 text-slate-100; }
+.btn { @apply rounded-lg px-3 py-2 text-sm font-medium bg-sky-500 text-slate-950 active:bg-sky-400 disabled:opacity-40; }
+.btn-ghost { @apply rounded-lg px-3 py-2 text-sm font-medium bg-slate-800 text-slate-100 active:bg-slate-700 disabled:opacity-40; }
+.card { @apply rounded-xl bg-slate-900 border border-slate-800 p-4; }
+.input { @apply w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-base; }
