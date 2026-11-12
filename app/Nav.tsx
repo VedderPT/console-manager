@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/lib/useSession';
 
-const items = [['/', 'Stock', '▦'], ['/anuncios/', 'Anúncios', '✎'], ['/importar/', 'Importar', '⇪']] as const;
+const items = [['/', 'Stock', '▦'], ['/fones/', 'Fones', '♪'], ['/anuncios/', 'Anúncios', '✎'], ['/importar/', 'Importar', '⇪']] as const;
 
 export default function Nav() {
   const { session } = useSession();
