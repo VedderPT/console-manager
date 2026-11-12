@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const [m, v, s] = await Promise.all([
-      db.from('models').select('id,brand,name,specs,os_frontend,image_path,active'),
+      db.from('models').select('id,brand,name,specs,os_frontend,image_path,catalog_image_path,active'),
       db.from('model_versions').select('model_id,price'),
       db.from('model_stock').select('model_id,available'),
     ]);
@@ -43,8 +43,9 @@ Deno.serve(async (req) => {
       const price = minPrice.get(x.id);
       if (!x.active || price === undefined) continue;
       const inStock = (stock.get(x.id) ?? 0) > 0;
-      if (!x.image_path) { skipped.push(`${x.name} (sem foto)`); continue; }
-      const image = `${url}/storage/v1/object/public/model-images/${x.image_path}`;
+      const img = x.catalog_image_path ?? x.image_path;
+      if (!img) { skipped.push(`${x.name} (sem foto)`); continue; }
+      const image = `${url}/storage/v1/object/public/model-images/${img}`;
       const desc = [x.specs, x.os_frontend].filter(Boolean).join(' · ') || `${x.brand} ${x.name}`;
       requests.push({
         method: 'UPDATE',
