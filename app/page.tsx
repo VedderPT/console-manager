@@ -41,7 +41,7 @@ export default function Home() {
     <>
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Stock <span className="text-slate-400 text-base">({totalUnits} consolas)</span></h1>
-        <button className="btn-ghost" onClick={() => supabase.auth.signOut()}>Sair</button>
+        <span className="flex gap-2"><Link href="/importar/" className="btn-ghost">Importar</Link><button className="btn-ghost" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       <input className="input mt-3" placeholder="Pesquisar modelo…" value={q} onChange={e => setQ(e.target.value)} />
       <div className="mt-3 flex gap-2 overflow-x-auto">
