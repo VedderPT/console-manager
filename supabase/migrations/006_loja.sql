@@ -55,7 +55,7 @@ language sql security definer stable set search_path = public, storage as $$
           select jsonb_agg(jsonb_build_object('id', v.id, 'label', v.label, 'price', v.price) order by v.sort)
           from model_versions v
           where v.model_id = m.id and (
-            not exists (select 1 from units u where u.model_id = m.id and u.status = 'available' and u.version_id is not null)
+            m.system = 'linux' or not exists (select 1 from units u where u.model_id = m.id and u.status = 'available' and u.version_id is not null)
             or exists (select 1 from units u where u.model_id = m.id and u.status = 'available' and u.version_id = v.id))
         ), '[]'::jsonb),
         'photos', coalesce((
