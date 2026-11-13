@@ -7,6 +7,7 @@ import { minPrice, olxText, textFor, wallapopText, title, vintedText, type TMode
 import Login from '../Login';
 import ModelImage from '../ModelImage';
 import { PhotoPicker } from '../Gallery';
+import { SHOP_URL } from '@/lib/shop';
 
 type Platform = 'wallapop' | 'olx' | 'marketplace' | 'vinted';
 type ModelRow = TModel & { image_path: string | null; active: boolean };
@@ -149,6 +150,7 @@ export default function Anuncios() {
                   <div className="flex flex-wrap gap-2">
                     <CopyBtn text={title(platform, m)} label="Copiar título" />
                     <CopyBtn text={text} label="Copiar texto" />
+                    <CopyBtn text={`${SHOP_URL}/loja/modelo/?id=${m.id}`} label="Copiar link da loja" />
                   </div>
                   <PhotoPicker modelId={m.id} />
                   {l ? (
