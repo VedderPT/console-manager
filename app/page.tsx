@@ -18,7 +18,7 @@ export default function Home() {
 
   const load = useCallback(async () => {
     const [m, s, v] = await Promise.all([
-      supabase.from('models').select('id,brand,name,system,active,image_path').order('system').order('name'),
+      supabase.from('models').select('id,brand,name,system,active,image_path,restock_eta').order('system').order('name'),
       supabase.from('model_stock').select('*'),
       supabase.from('model_versions').select('*'),
     ]);
@@ -85,7 +85,7 @@ export default function Home() {
               <Link href={`/modelo/?id=${m.id}`} className="card block overflow-hidden !p-0 transition active:scale-[.98]">
                 <div className="relative">
                   <ModelImage path={m.image_path} name={m.name} system={m.system} className="aspect-[4/3]" />
-                  <span className={`chip absolute right-2 top-2 ${n > 0 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800/90 text-slate-400'}`}>{n > 0 ? `${n} em stock` : 'esgotado'}</span>
+                  <span className={`chip absolute right-2 top-2 ${n > 0 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800/90 text-slate-400'}`}>{n > 0 ? `${n} em stock` : m.restock_eta ? 'a caminho' : 'esgotado'}</span>
                 </div>
                 <div className="p-3">
                   <p className="text-[11px] uppercase tracking-wide text-slate-400">{m.brand} · {m.system === 'linux' ? 'Linux' : 'Android'}</p>

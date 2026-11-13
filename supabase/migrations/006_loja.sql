@@ -3,6 +3,9 @@
 
 create extension if not exists pg_net with schema extensions;
 
+-- Consola encomendada ao fornecedor: texto com a estimativa (ex.: 'final de novembro'). Vazio = não está em reposição.
+alter table models add column if not exists restock_eta text;
+
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   ref text not null unique,
@@ -22,6 +25,7 @@ create table if not exists orders (
   payment text,
   address text,
   notes text,
+  preorder boolean not null default false,
   consent_at timestamptz not null
 );
 create index if not exists orders_status_idx on orders (status, created_at desc);
@@ -39,11 +43,14 @@ language sql security definer stable set search_path = public, storage as $$
     'models', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', m.id, 'brand', m.brand, 'name', m.name, 'system', m.system,
+        'in_stock', s.in_stock, 'restock_eta', m.restock_eta,
         'os_frontend', m.os_frontend, 'specs', m.specs, 'games_url', m.games_url,
         'games_64', m.games_64, 'games_128', m.games_128, 'bag_price', m.bag_price,
         'accessory', m.accessory, 'shipping_text', m.shipping_text, 'image_path', m.image_path,
-        'colors', coalesce((select jsonb_agg(distinct c.name) from units u join colors c on c.id = u.color_id
-                            where u.model_id = m.id and u.status = 'available'), '[]'::jsonb),
+        'colors', coalesce(case when s.in_stock
+            then (select jsonb_agg(distinct c.name) from units u join colors c on c.id = u.color_id
+                  where u.model_id = m.id and u.status = 'available')
+            else (select jsonb_agg(c.name order by c.name) from colors c where c.model_id = m.id) end, '[]'::jsonb),
         'versions', coalesce((
           select jsonb_agg(jsonb_build_object('id', v.id, 'label', v.label, 'price', v.price) order by v.sort)
           from model_versions v
@@ -57,7 +64,8 @@ language sql security definer stable set search_path = public, storage as $$
         ), '[]'::jsonb)
       ) order by m.system, m.name)
       from models m
-      where m.active and exists (select 1 from units u where u.model_id = m.id and u.status = 'available')
+      cross join lateral (select exists (select 1 from units u where u.model_id = m.id and u.status = 'available') as in_stock) s
+      where m.active and (s.in_stock or m.restock_eta is not null)
     ), '[]'::jsonb),
     'options', coalesce((select jsonb_agg(to_jsonb(o) order by o.sort) from android_options o), '[]'::jsonb)
   );
@@ -85,6 +93,7 @@ declare
   v_ref text;
   v_topic text;
   v_opt_label text;
+  v_in_stock boolean;
 begin
   -- armadilha anti-bot: campo escondido preenchido => finge sucesso sem guardar
   if coalesce(p->>'hp', '') <> '' then
@@ -114,10 +123,11 @@ begin
   end if;
 
   select * into v_model from models where id = (p->>'model_id')::uuid and active;
-  if not found or not exists (select 1 from units where model_id = v_model.id and status = 'available') then
+  v_in_stock := found and exists (select 1 from units where model_id = v_model.id and status = 'available');
+  if not found or (not v_in_stock and v_model.restock_eta is null) then
     raise exception 'Este modelo já não está disponível.';
   end if;
-  if v_color is not null and not exists (
+  if v_in_stock and v_color is not null and not exists (
     select 1 from units u join colors c on c.id = u.color_id
     where u.model_id = v_model.id and u.status = 'available' and c.name = v_color) then
     raise exception 'Essa cor já não está disponível.';
@@ -153,9 +163,9 @@ begin
 
   v_ref := 'ST-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
   insert into orders (ref, name, phone, email, model_id, model_name, version_label, color, option_code, extras, total,
-                      delivery, payment, address, notes, consent_at)
+                      delivery, payment, address, notes, preorder, consent_at)
   values (v_ref, v_name, v_phone, v_email, v_model.id, v_model.name, v_ver.label, v_color, v_opt_label,
-          nullif(array_to_string(v_extras, ', '), ''), v_total, v_delivery, v_payment, v_address, v_notes, now());
+          nullif(array_to_string(v_extras, ', '), ''), v_total, v_delivery, v_payment, v_address, v_notes, not v_in_stock, now());
 
   -- aviso no telemóvel (ntfy). Sem dados pessoais do cliente: os detalhes ficam na app.
   select value #>> '{}' into v_topic from settings where key = 'ntfy_topic';
@@ -163,14 +173,14 @@ begin
     begin
       perform net.http_post(
         url := 'https://ntfy.sh',
-        body := jsonb_build_object('topic', v_topic, 'title', 'Novo pedido ' || v_ref,
+        body := jsonb_build_object('topic', v_topic, 'title', case when v_in_stock then 'Novo pedido ' else 'Nova pré-reserva ' end || v_ref,
           'message', v_model.name || ' · ' || v_total || ' €', 'tags', jsonb_build_array('shopping_cart'), 'priority', 4,
           'click', 'https://console-manager.pages.dev/pedidos/'));
     exception when others then null;
     end;
   end if;
 
-  return jsonb_build_object('ok', true, 'ref', v_ref, 'total', v_total);
+  return jsonb_build_object('ok', true, 'ref', v_ref, 'total', v_total, 'preorder', not v_in_stock);
 end $$;
 
 revoke all on function shop_catalog() from public;

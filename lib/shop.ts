@@ -9,7 +9,7 @@ export type ShopModel = {
   id: string; brand: string; name: string; system: 'linux' | 'android';
   os_frontend: string | null; specs: string | null; games_url: string | null; games_64: string | null; games_128: string | null;
   bag_price: number | null; accessory: string | null; shipping_text: string | null; image_path: string | null;
-  colors: string[]; versions: ShopVersion[]; photos: string[];
+  colors: string[]; versions: ShopVersion[]; photos: string[]; in_stock: boolean; restock_eta: string | null;
 };
 export type ShopOption = { code: string; price: number; microsd: string | null; kind: string | null; games: string | null; max_games: string | null };
 export type Catalog = { models: ShopModel[]; options: ShopOption[] };

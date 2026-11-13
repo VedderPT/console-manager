@@ -10,7 +10,7 @@ import { Gallery } from '../Gallery';
 
 type Color = { id: string; name: string; note: string | null };
 type Unit = { id: string; color_id: string; version_id: string | null };
-type Info = { name: string; brand: string; system: 'linux' | 'android'; image_path: string | null; games_url: string | null; games_extra: number | null };
+type Info = { name: string; brand: string; system: 'linux' | 'android'; image_path: string | null; games_url: string | null; games_extra: number | null; restock_eta: string | null };
 const CHANNELS = [['olx', 'OLX'], ['wallapop', 'Wallapop'], ['vinted', 'Vinted'], ['marketplace', 'Marketplace'], ['whatsapp', 'WhatsApp']] as const;
 
 function ModelDetail() {
@@ -24,6 +24,7 @@ function ModelDetail() {
   const [version, setVersion] = useState('');
   const [gamesUrl, setGamesUrl] = useState('');
   const [extra, setExtra] = useState('');
+  const [restock, setRestock] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -33,13 +34,13 @@ function ModelDetail() {
   const load = useCallback(async () => {
     if (!id) return;
     const [m, c, v, u] = await Promise.all([
-      supabase.from('models').select('name,brand,system,image_path,games_url,games_extra').eq('id', id).single(),
+      supabase.from('models').select('name,brand,system,image_path,games_url,games_extra,restock_eta').eq('id', id).single(),
       supabase.from('colors').select('id,name,note').eq('model_id', id).order('name'),
       supabase.from('model_versions').select('*').eq('model_id', id).order('sort'),
       supabase.from('units').select('id,color_id,version_id').eq('model_id', id).eq('status', 'available'),
     ]);
     setLoadError(m.error?.message ?? '');
-    if (m.data) { setInfo(m.data as Info); setGamesUrl(m.data.games_url ?? ''); setExtra(m.data.games_extra?.toString() ?? ''); }
+    if (m.data) { setInfo(m.data as Info); setGamesUrl(m.data.games_url ?? ''); setExtra(m.data.games_extra?.toString() ?? ''); setRestock(m.data.restock_eta ?? ''); }
     setColors((c.data ?? []) as Color[]); setVersions((v.data ?? []) as Version[]); setUnits((u.data ?? []) as Unit[]);
     setVersion(prev => prev || v.data?.[0]?.id || '');
   }, [id]);
@@ -81,7 +82,7 @@ function ModelDetail() {
   }
   async function saveExtra() {
     setBusy(true);
-    const { error } = await supabase.from('models').update({ games_url: gamesUrl.trim() || null }).eq('id', id);
+    const { error } = await supabase.from('models').update({ games_url: gamesUrl.trim() || null, restock_eta: restock.trim() || null }).eq('id', id);
     setMsg(error ? error.message : 'Dados do anúncio guardados.'); setBusy(false);
   }
 
@@ -151,6 +152,9 @@ function ModelDetail() {
         <div className="mt-3 space-y-2">
           <label className="text-sm text-slate-400">Link da lista de jogos</label>
           <input className="input" inputMode="url" value={gamesUrl} onChange={e => setGamesUrl(e.target.value)} placeholder="https://..." />
+          <label className="text-sm text-slate-400">Aguarda reposição (previsão, ex.: «final de novembro»). Vazio = não está em reposição</label>
+          <input className="input" value={restock} onChange={e => setRestock(e.target.value)} placeholder="Sem reposição" maxLength={60} />
+          <p className="text-xs text-slate-500">Só aparece no site quando o modelo está sem stock. Com stock, o site mostra-o normalmente.</p>
           <button className="btn" disabled={busy} onClick={saveExtra}>Guardar</button>
         </div>
       </details>

@@ -6,7 +6,7 @@ export const supabase = createClient(
 );
 
 export type ColorStock = { model_id: string; model: string; color_id: string; color: string; available: number; reserved: number };
-export type Model = { id: string; brand: string; name: string; system: 'linux' | 'android'; active: boolean; image_path: string | null };
+export type Model = { id: string; brand: string; name: string; system: 'linux' | 'android'; active: boolean; image_path: string | null; restock_eta?: string | null };
 export type Version = { id: string; model_id: string; label: string; price: number; sort: number };
 
 export function imageUrl(path: string | null): string | null {

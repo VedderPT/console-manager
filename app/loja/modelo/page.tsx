@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { fetchCatalog, photoUrls, eur, waLink, shippingPrices, type ShopModel, type ShopOption } from '@/lib/shop';
 
-type Done = { ref: string; total: number; text: string };
+type Done = { ref: string; total: number; text: string; preorder: boolean };
 
 function Model() {
   const id = useSearchParams().get('id');
@@ -76,7 +76,7 @@ function Model() {
 
   function summary(ref: string, tot: number) {
     const opt = option === 'X' ? 'X · Apenas configuração' : options.find(o => o.code === option);
-    const L = [`Olá! Fiz o pedido ${ref} no site.`, '', `Consola: ${m.name}${version ? ` (${version.label.replace(/^Padrão\s*/, '')})` : ''}`];
+    const L = [`Olá! Fiz ${m.in_stock ? 'o pedido' : 'a pré-reserva'} ${ref} no site.`, '', `Consola: ${m.name}${version ? ` (${version.label.replace(/^Padrão\s*/, '')})` : ''}`];
     if (color) L.push(`Cor: ${color}`);
     if (opt) L.push(`Opção: ${typeof opt === 'string' ? opt : `${opt.code} · MicroSD ${opt.microsd ?? ''} ${opt.games ?? ''}`}`);
     if (extras.length) L.push(`Extras: ${extras.map(e => (e === 'bolsa' ? 'Bolsa de armazenamento' : 'Capa de silicone')).join(', ')}`);
@@ -96,8 +96,8 @@ function Model() {
       delivery, payment, name, phone, email, address, notes, consent, hp, elapsed: Date.now() - openedAt.current } });
     setBusy(false);
     if (error) { setFormError(error.message); return; }
-    const r = data as { ref: string; total: number };
-    setDone({ ref: r.ref, total: Number(r.total), text: summary(r.ref, Number(r.total)) });
+    const r = data as { ref: string; total: number; preorder?: boolean };
+    setDone({ ref: r.ref, total: Number(r.total), text: summary(r.ref, Number(r.total)), preorder: !!r.preorder });
     window.scrollTo({ top: 0 });
   }
 
@@ -105,9 +105,9 @@ function Model() {
     return (
       <section className="card mt-6 text-center">
         <p className="text-4xl">✅</p>
-        <h1 className="mt-2 text-2xl font-bold">Pedido recebido</h1>
+        <h1 className="mt-2 text-2xl font-bold">{done.preorder ? 'Pré-reserva recebida' : 'Pedido recebido'}</h1>
         <p className="mt-1 text-slate-300">Referência <b>{done.ref}</b> · {m.name} · {eur(done.total)} (sem portes)</p>
-        <p className="mt-3 text-sm text-slate-300">Para agilizar, envia-nos já a mensagem por WhatsApp. Confirmamos disponibilidade, portes e forma de pagamento.</p>
+        <p className="mt-3 text-sm text-slate-300">{done.preorder ? `Esta consola está a caminho${m.restock_eta ? ` (previsão: ${m.restock_eta})` : ''}. Envia-nos já a mensagem por WhatsApp e avisamos-te assim que chegar. Só pagas depois de confirmarmos contigo.` : 'Para agilizar, envia-nos já a mensagem por WhatsApp. Confirmamos disponibilidade, portes e forma de pagamento.'}</p>
         <a className="btn mt-4 block !py-3 text-base" href={waLink(done.text)} target="_blank" rel="noreferrer">Enviar por WhatsApp</a>
         <Link href="/loja/" className="mt-3 block text-sm text-sky-400">← Voltar às consolas</Link>
       </section>);
@@ -133,6 +133,10 @@ function Model() {
           </ul>)}
       </div>
 
+      {!m.in_stock && (
+        <div className="mt-3 rounded-2xl border border-amber-400/50 bg-amber-400/10 p-3 text-sm text-amber-100">
+          <b>A caminho</b>: encomendada ao fornecedor{m.restock_eta ? <>, previsão de chegada <b>{m.restock_eta}</b></> : ''}. Podes fazer já uma pré-reserva, sem pagamento agora. A data é uma estimativa e pode mudar.
+        </div>)}
       <h1 className="mt-4 text-2xl font-bold leading-tight">{m.name}</h1>
       <p className="text-sm text-slate-400">{m.brand} · {m.system === 'linux' ? 'Linux' : 'Android'}{m.os_frontend ? ` · ${m.os_frontend}` : ''}</p>
       {m.specs && <p className="mt-3 whitespace-pre-line text-slate-300">{m.specs}</p>}
@@ -240,8 +244,8 @@ function Model() {
             <span className="text-2xl font-bold text-sky-300">{eur(total)}</span>
           </div>
           {formError && <p className="mt-2 text-sm text-red-400">{formError}</p>}
-          <button className="btn mt-2 w-full !py-3 text-base" disabled={busy || !consent}>{busy ? 'A enviar…' : 'Enviar pedido'}</button>
-          <p className="mt-2 text-center text-xs text-slate-400">Sem pagamento agora. Confirmamos tudo contigo antes.</p>
+          <button className="btn mt-2 w-full !py-3 text-base" disabled={busy || !consent}>{busy ? 'A enviar…' : m.in_stock ? 'Enviar pedido' : 'Fazer pré-reserva'}</button>
+          <p className="mt-2 text-center text-xs text-slate-400">Sem pagamento agora. Confirmamos tudo contigo antes.{!m.in_stock ? ' Avisamos quando a consola chegar.' : ''}</p>
         </div>
       </form>
     </>

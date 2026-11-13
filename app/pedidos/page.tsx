@@ -8,7 +8,7 @@ import Login from '../Login';
 type Order = {
   id: string; ref: string; created_at: string; status: string; name: string; phone: string; email: string | null;
   model_name: string; version_label: string | null; color: string | null; option_code: string | null; extras: string | null;
-  total: number | null; delivery: string; payment: string | null; address: string | null; notes: string | null;
+  total: number | null; preorder: boolean; delivery: string; payment: string | null; address: string | null; notes: string | null;
 };
 const STATUS = ['novo', 'contactado', 'confirmado', 'enviado', 'cancelado'] as const;
 const DELIVERY: Record<string, string> = { maos_faro: 'Em mãos em Faro', registado: 'Correio registado', cobranca: 'Envio à cobrança' };
@@ -63,7 +63,7 @@ export default function Pedidos() {
             <li key={o.id} className={`card space-y-2 ${o.status === 'novo' ? 'border-sky-500/60' : ''}`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold leading-tight">{o.model_name}{o.version_label ? ` · ${o.version_label.replace(/^Padrão\s*/, '')}` : ''}</p>
+                  <p className="font-semibold leading-tight">{o.preorder && <span className="chip mr-2 bg-amber-400 text-slate-950">pré-reserva</span>}{o.model_name}{o.version_label ? ` · ${o.version_label.replace(/^Padrão\s*/, '')}` : ''}</p>
                   <p className="text-xs text-slate-400">{o.ref} · {when}</p>
                 </div>
                 {o.total !== null && <b className="text-sky-300">{eur(Number(o.total))}</b>}
