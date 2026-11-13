@@ -80,6 +80,14 @@ function ModelDetail() {
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Erro ao enviar a imagem'); }
     await load(); setBusy(false);
   }
+  async function removeCover() {
+    if (!info?.image_path || !window.confirm('Remover a foto principal deste modelo?')) return;
+    setBusy(true); setMsg('');
+    const { error } = await supabase.from('models').update({ image_path: null }).eq('id', id);
+    if (error) setMsg(error.message);
+    else { await supabase.storage.from('model-images').remove([info.image_path]); setMsg('Foto removida.'); }
+    await load(); setBusy(false);
+  }
   async function saveExtra() {
     setBusy(true);
     const { error } = await supabase.from('models').update({ games_url: gamesUrl.trim() || null, restock_eta: restock.trim() || null }).eq('id', id);
@@ -98,10 +106,13 @@ function ModelDetail() {
       <div className="card mt-2 overflow-hidden !p-0">
         <div className="relative">
           <ModelImage path={info.image_path} name={info.name} system={info.system} className="aspect-[16/10]" />
-          <label className="btn-ghost absolute bottom-2 right-2 cursor-pointer !py-1 text-xs">
-            {info.image_path ? 'Trocar foto' : 'Adicionar foto'}
-            <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={e => e.target.files?.[0] && upload(e.target.files[0])} />
-          </label>
+          <div className="absolute bottom-2 right-2 flex gap-2">
+            {info.image_path && <button className="btn-ghost !py-1 text-xs text-red-300" disabled={busy} onClick={removeCover}>Remover foto</button>}
+            <label className="btn-ghost cursor-pointer !py-1 text-xs">
+              {info.image_path ? 'Trocar foto' : 'Adicionar foto'}
+              <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={e => e.target.files?.[0] && upload(e.target.files[0])} />
+            </label>
+          </div>
         </div>
         <div className="p-4">
           <p className="text-xs uppercase tracking-wide text-slate-400">{info.brand} · {info.system === 'linux' ? 'Linux' : 'Android'}</p>

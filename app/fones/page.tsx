@@ -40,6 +40,19 @@ export default function Fones() {
     setBusy('');
   }
 
+  async function removePhoto(f: Fone) {
+    if (!f.image_url || !window.confirm(`Remover a foto de ${f.name}?`)) return;
+    setBusy(f.id); setError('');
+    const { error } = await supabase.from('fones').update({ image_url: null }).eq('id', f.id);
+    if (error) setError(error.message);
+    else {
+      const path = decodeURIComponent(f.image_url.split('/model-images/')[1] ?? '');
+      if (path) await supabase.storage.from('model-images').remove([path]);
+      await load();
+    }
+    setBusy('');
+  }
+
   if (loading) return <p className="mt-16 text-center text-slate-400">A carregar…</p>;
   if (!session) return <Login />;
 
@@ -67,6 +80,7 @@ export default function Fones() {
                     : <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-800 text-2xl">🎧</div>}
                   <input type="file" accept="image/*" className="hidden" onChange={e => setPhoto(f, e.target.files?.[0])} />
                 </label>
+                {f.image_url && <button className="text-xs text-red-300" disabled={busy === f.id} onClick={() => removePhoto(f)} aria-label="Remover foto">✕</button>}
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold leading-tight">{f.name}</p>
                   <p className="text-sm text-sky-300">{String(f.price).replace('.', ',')} €</p>
